@@ -90,18 +90,16 @@ class Extra(ctk.CTkToplevel):
         submit.pack()
 
     def add_data(self):
-        print(self.sign,self.path_entry.get())
         sign = self.sign
         path = self.path_entry.get()
         if path == "" or sign[0] == sign[1] or sign[1] == sign[2]:
             return
         save_data = {
-            "sign":data.copy(),
+            "sign":self.sign.copy(),
             "path":path
         }
         if len(data) < 5:
             data.append(save_data)
-            print(data)
             self.app.save_data()
             self.app.render_data(data)
             self.destroy()
@@ -114,7 +112,6 @@ class App:
         self.window.title("app")
         global sign_options 
         global data
-        data = []
         sign_options = {"rat":r"./img/rat.png",
                             "snake":r"./img/snake.png", 
                             "hare":r"./img/hare.png", 
@@ -138,6 +135,8 @@ class App:
         self.canvas = ctk.CTkCanvas(self.frame1,bg="black",borderwidth=0,highlightthickness=2, highlightbackground="#2B719E")
         self.canvas.pack(expand=True, fill="both")
         self.create_plus_button()
+
+        data = []
         self.load_data()
 
     def create_main_frame(self):
@@ -169,7 +168,9 @@ class App:
         extra_window = Extra(self)
 
     def render_data(self,d):
-        print(self.frame2)
+        data = d
+        for child in self.scroll_frame.winfo_children():
+            child.destroy()
         if len(d) != 0:
             for index, item in enumerate(d):
                 frame = ctk.CTkFrame(self.scroll_frame,corner_radius=0,border_width=0,)
@@ -183,13 +184,20 @@ class App:
                     canvas.create_image(0, 0, anchor='nw', image=img)
                     canvas.image = img = img
                     canvas.grid(row=0, column=i, padx=10, pady=10)
+                label = ctk.CTkLabel(frame, text=f"Path : {item["path"]}",font=LABEL_FONT_STYLE)
+                label.grid(row=1, column=0,)
+                button = ctk.CTkButton(frame, text="delete", border_width=0, command=lambda d=d,index=index: self.del_data(index,d))
+                button.grid(row=1, column=2)
+
+    def del_data(self,i,d):
+        d.pop(i)
+        self.render_data(d)
+        self.save_data()
 
     def render_current_data(self):
-        pass
-
-    def del_data(self,index):
-        pass
-
+        for child in self.frame2.winfo_children():
+            child.destroy()
+    
     def webcam(self):
         pass
     
