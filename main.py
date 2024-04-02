@@ -26,6 +26,8 @@ class Extra(ctk.CTkToplevel):
         self.sign_frame = self.create_frame(row=2, column=0, rowspan=1, columnspan=5)
         self.img_frame = self.create_frame(row=3, column=0, rowspan=1, columnspan=5)
         self.add_frame = self.create_frame(row=4, column=0, rowspan=1, columnspan=5)
+
+        # need restart when open 
         for key, value in (sign_options.items()):
             image = Image.open(value)
             new_width = image.width // 50
@@ -101,6 +103,7 @@ class Extra(ctk.CTkToplevel):
             data.append(save_data)
             print(data)
             self.app.save_data()
+            self.app.render_data(data)
             self.destroy()
 
 class App:
@@ -111,6 +114,7 @@ class App:
         self.window.title("app")
         global sign_options 
         global data
+        data = []
         sign_options = {"rat":r"./img/rat.png",
                             "snake":r"./img/snake.png", 
                             "hare":r"./img/hare.png", 
@@ -129,12 +133,12 @@ class App:
         self.frame3 = self.create_frame(row=1, column=1, rowspan=5, columnspan=1)
         self.frame4 = self.create_frame(row=6, column=1, rowspan=1, columnspan=1)
         self.scroll_frame = self.create_scroll_frame(frame=self.frame3)
-        data = []
         self.current_data = []
 
         self.canvas = ctk.CTkCanvas(self.frame1,bg="black",borderwidth=0,highlightthickness=2, highlightbackground="#2B719E")
         self.canvas.pack(expand=True, fill="both")
         self.create_plus_button()
+        self.load_data()
 
     def create_main_frame(self):
         frame = ctk.CTkFrame(self.window,border_width=0)
@@ -164,18 +168,31 @@ class App:
     def use_extra_window(self):
         extra_window = Extra(self)
 
-    def render_data(self):
-        pass
+    def render_data(self,d):
+        print(self.frame2)
+        if len(d) != 0:
+            for index, item in enumerate(d):
+                frame = ctk.CTkFrame(self.scroll_frame,corner_radius=0,border_width=0,)
+                frame.pack()
+                for i in range(len(item['sign'])):
+                    path = sign_options[item['sign'][i]]
+                    img = Image.open(path)
+                    img = img.resize((200, 200))
+                    img = ImageTk.PhotoImage(img)
+                    canvas = ctk.CTkCanvas(frame, width=100, height=100,bg="black",borderwidth=0,highlightthickness=2, highlightbackground="#2B719E")
+                    canvas.create_image(0, 0, anchor='nw', image=img)
+                    canvas.image = img = img
+                    canvas.grid(row=0, column=i, padx=10, pady=10)
 
     def render_current_data(self):
-        pass
-
-    def add_data(self,data):
         pass
 
     def del_data(self,index):
         pass
 
+    def webcam(self):
+        pass
+    
     def sign_detect(self):
         pass
 
@@ -183,11 +200,11 @@ class App:
         with open("data.json", "w") as f:
             json.dump(data, f)
 
-
     def load_data(self):
         try:
             with open("data.json", "r") as f:
                 data = json.load(f)
+                self.render_data(data)
         except FileNotFoundError:
             pass
 
@@ -196,5 +213,4 @@ class App:
 
 
 app = App()
-
 app.run()
