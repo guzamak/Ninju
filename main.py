@@ -6,42 +6,33 @@ import json
 import customtkinter as ctk
 
 DEFAULT_FONT_STYLE = ("Arial",50)
-LABEL_FONT_STYLE = ("Arial",8)
+LABEL_FONT_STYLE = ("Arial",14)
 
 
 class Extra(ctk.CTkToplevel):
-    def __init__(self):
+    def __init__(self,app_instance):
         super().__init__()
         self.title('extra window')
+        self.app = app_instance
         self.geometry('750x500')
         self.resizable(0,0)
         self.configure(fg_color="#333333")
-        self.sign_options = {"rat":r"./img/rat.png",
-                            "snake":r"./img/snake.png", 
-                            "hare":r"./img/hare.png", 
-                            "dragon":r"./img/dragon.png", 
-                            "ox":r"./img/ox.png", 
-                            "ram":r"./img/ram.png", 
-                            "monkey":r"./img/monkey.png", 
-                            "tiger":r"./img/tiger.png", 
-                            "bird":r"./img/bird.png", 
-                            "dog":r"./img/dog.png", 
-                            "boar":r"./img/boar.png"}
         self.img_store = {}
         self.sign_dropdowns = {}
         self.sign_menus = {}
+        self.sign = ["rat","rat","rat"]
+        self.image = {}
         self.path_frame = self.create_frame(row=1, column=0, rowspan=1, columnspan=1)
         self.sign_frame = self.create_frame(row=2, column=0, rowspan=1, columnspan=5)
         self.img_frame = self.create_frame(row=3, column=0, rowspan=1, columnspan=5)
         self.add_frame = self.create_frame(row=4, column=0, rowspan=1, columnspan=5)
-        for key, value in (self.sign_options.items()):
+        for key, value in (sign_options.items()):
             image = Image.open(value)
             new_width = image.width // 50
             new_height = image.height // 50
             image = image.resize((new_width, new_height))
-            self.sign_options[key] = image
+            self.image[key] = image
             
-
         self.create_path()
         self.create_sign_label()
         self.create_submit_button()
@@ -74,7 +65,7 @@ class Extra(ctk.CTkToplevel):
             sign_label = ctk.CTkLabel(self.sign_frame, text=f"Sign {i+1}:",font=LABEL_FONT_STYLE)
             sign_label.grid(row=1, column=i+1, padx=100)
 
-            self.img_store[i] = ImageTk.PhotoImage(self.sign_options["rat"])
+            self.img_store[i] = ImageTk.PhotoImage(self.image["rat"])
 
             self.sign_dropdowns[i] = tk.Menubutton(self.img_frame, image=self.img_store[i], relief=tk.RAISED,highlightthickness=0)
             self.sign_dropdowns[i].grid(row=1, column=i+1, padx=50)
@@ -83,17 +74,34 @@ class Extra(ctk.CTkToplevel):
             self.sign_menus[i] = tk.Menu(self.sign_dropdowns[i], tearoff=False,background="#333333",borderwidth=0)
             self.sign_dropdowns[i].config(menu=self.sign_menus[i])
 
-            for key, value in (self.sign_options.items()):
+            for key, value in (self.image.items()):
                 self.img_store[str(i)+key] = ImageTk.PhotoImage(value)
                 self.sign_menus[i].add_command(label="", compound=tk.LEFT,image=self.img_store[str(i)+key], command=lambda value=key, var=value, index=i: self.change_option(value,index))
 
     def change_option(self,key,i):
-        self.img_store[i] = ImageTk.PhotoImage(self.sign_options[key])
+        self.img_store[i] = ImageTk.PhotoImage(self.image[key])
         self.sign_dropdowns[i].config(image=self.img_store[i])
+        self.sign[i] = key
 
     def create_submit_button(self):
-        submit = ctk.CTkButton(self.add_frame, text="Add +",font=LABEL_FONT_STYLE)
+        submit = ctk.CTkButton(self.add_frame, text="Add +",font=LABEL_FONT_STYLE, command=self.add_data)
         submit.pack()
+
+    def add_data(self):
+        print(self.sign,self.path_entry.get())
+        sign = self.sign
+        path = self.path_entry.get()
+        if path == "" or sign[0] == sign[1] or sign[1] == sign[2]:
+            return
+        save_data = {
+            "sign":data.copy(),
+            "path":path
+        }
+        if len(data) < 5:
+            data.append(save_data)
+            print(data)
+            self.app.save_data()
+            self.destroy()
 
 class App:
     def __init__(self):
@@ -101,6 +109,19 @@ class App:
         self.window.geometry("1080x600")
         self.window.resizable(0, 0)
         self.window.title("app")
+        global sign_options 
+        global data
+        sign_options = {"rat":r"./img/rat.png",
+                            "snake":r"./img/snake.png", 
+                            "hare":r"./img/hare.png", 
+                            "dragon":r"./img/dragon.png", 
+                            "ox":r"./img/ox.png", 
+                            "ram":r"./img/ram.png", 
+                            "monkey":r"./img/monkey.png", 
+                            "tiger":r"./img/tiger.png", 
+                            "bird":r"./img/bird.png", 
+                            "dog":r"./img/dog.png", 
+                            "boar":r"./img/boar.png"}
 
         self.main_frame = self.create_main_frame()
         self.frame1 = self.create_frame(row=1, column=0, rowspan=4, columnspan=1)
@@ -108,7 +129,7 @@ class App:
         self.frame3 = self.create_frame(row=1, column=1, rowspan=5, columnspan=1)
         self.frame4 = self.create_frame(row=6, column=1, rowspan=1, columnspan=1)
         self.scroll_frame = self.create_scroll_frame(frame=self.frame3)
-        self.data = []
+        data = []
         self.current_data = []
 
         self.canvas = ctk.CTkCanvas(self.frame1,bg="black",borderwidth=0,highlightthickness=2, highlightbackground="#2B719E")
@@ -141,7 +162,7 @@ class App:
         button.pack(expand=True, fill="both")
 
     def use_extra_window(self):
-        extra_window = Extra()
+        extra_window = Extra(self)
 
     def render_data(self):
         pass
@@ -152,7 +173,7 @@ class App:
     def add_data(self,data):
         pass
 
-    def del_data(self):
+    def del_data(self,index):
         pass
 
     def sign_detect(self):
@@ -160,15 +181,13 @@ class App:
 
     def save_data(self):
         with open("data.json", "w") as f:
-            json.dump(self.data, f)
+            json.dump(data, f)
 
 
     def load_data(self):
         try:
             with open("data.json", "r") as f:
-                self.data = json.load(f)
-                for obj in self.data:
-                    self.listbox.insert(tk.END, f"{', '.join(obj['signs'])}: {obj['path']}")
+                data = json.load(f)
         except FileNotFoundError:
             pass
 
@@ -177,4 +196,5 @@ class App:
 
 
 app = App()
+
 app.run()
