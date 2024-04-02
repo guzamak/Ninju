@@ -6,6 +6,7 @@ import json
 import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
 from ultralytics import YOLO
+import subprocess
 
 
 DEFAULT_FONT_STYLE = ("Arial",50)
@@ -141,6 +142,8 @@ class App:
         self.frame4 = self.create_frame(row=6, column=1, rowspan=1, columnspan=1)
         self.scroll_frame = self.create_scroll_frame(frame=self.frame3)
         self.video_cap = cv2.VideoCapture(0)
+        self.sign_count = 0
+        self.sign_before = ""
         self.model = YOLO("last (1).pt")
         self.current_data = []
 
@@ -210,13 +213,29 @@ class App:
     def render_current_data(self):
         for child in self.frame2.winfo_children():
             child.destroy()
+        if len(self.current_data) != 0:
+            for index, item in enumerate(self.current_data):
+                path = sign_options[item]
+                img = Image.open(path)
+                img = img.resize((200, 200))
+                img = ImageTk.PhotoImage(img)
+                canvas = ctk.CTkCanvas(self.frame2, width=100, height=100,bg="black",borderwidth=0,highlightthickness=2, highlightbackground="#2B719E")
+                canvas.create_image(0, 0, anchor='nw', image=img)
+                canvas.image = img = img
+                canvas.grid(row=0, column=index, padx=10, pady=10)
 
     def clear_current_data(self):
-        pass
+        self.current_data = []
+        self.render_current_data()
+
+    def run_path(self):
+        for i, item in enumerate(data):
+            if item["sign"] == self.current_data:
+                subprocess.call(item["path"])
     
     def update_webcam(self):
         _, img = self.video_cap.read()
-        cln = []
+        class_index = []
         if _:
             self.frame1.update_idletasks() 
             self.current_img = img
@@ -236,20 +255,35 @@ class App:
             pil_img = pil_img.resize((img_width,img_height))
             results = self.model.predict(pil_img)
             box = results[0].boxes.cpu().numpy()
-            cln = box.cls
+            class_index = box.cls
             img = Image.fromarray(cv2.cvtColor(results[0].plot(), cv2.COLOR_BGR2RGB))
             self.webcam = ImageTk.PhotoImage(image=img)
             self.canvas.delete("all")
             self.canvas.create_image(x,y, image=self.webcam, anchor="nw")
 
-        self.sign_detect(cln)
-        self.window.after(2, self.update_webcam)
+        self.add_current_data(class_index)
+        self.window.after(1, self.update_webcam)
     
-    def sign_detect(self,cln):
-        if len(cln) != 0:
+    def add_current_data(self,class_index):
+        time_threshold = 3
+        if len(class_index) != 0 and len(self.current_data) < 3:
             class_list = list(sign_options.keys())
-            value = class_list[int(cln[0])-1]
-
+            value = class_list[int(class_index[0])-1]
+            if self.sign_before != "":
+                if self.sign_before == value:
+                    self.sign_count += 1
+                    if self.sign_count == time_threshold:
+                        self.current_data.append(value)
+                        self.render_current_data()
+                else:
+                    self.sign_count = 0
+                    self.sign_before = value
+            else:
+                self.sign_count = 1
+                self.sign_before = value
+        else:
+            pass
+        
 
     def save_data(self):
         with open("data.json", "w") as f:
