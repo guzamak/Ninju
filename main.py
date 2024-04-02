@@ -4,10 +4,15 @@ from PIL import Image, ImageTk
 import numpy as np
 import json
 import customtkinter as ctk
+from CTkMessagebox import CTkMessagebox
+from ultralytics import YOLO
+
 
 DEFAULT_FONT_STYLE = ("Arial",50)
 LABEL_FONT_STYLE = ("Arial",14)
 
+def show_error(text):
+    CTkMessagebox(title="Error", message=text, icon="cancel")
 
 class Extra(ctk.CTkToplevel):
     def __init__(self,app_instance):
@@ -93,7 +98,9 @@ class Extra(ctk.CTkToplevel):
         sign = self.sign
         path = self.path_entry.get()
         if path == "" or sign[0] == sign[1] or sign[1] == sign[2]:
-            return
+           show_error("path != no ")
+           return
+
         save_data = {
             "sign":self.sign.copy(),
             "path":path
@@ -103,6 +110,8 @@ class Extra(ctk.CTkToplevel):
             self.app.save_data()
             self.app.render_data(data)
             self.destroy()
+        else:
+            show_error("max 5")
 
 class App:
     def __init__(self):
@@ -112,24 +121,27 @@ class App:
         self.window.title("app")
         global sign_options 
         global data
-        sign_options = {"rat":r"./img/rat.png",
-                            "snake":r"./img/snake.png", 
-                            "hare":r"./img/hare.png", 
-                            "dragon":r"./img/dragon.png", 
-                            "ox":r"./img/ox.png", 
-                            "ram":r"./img/ram.png", 
-                            "monkey":r"./img/monkey.png", 
-                            "tiger":r"./img/tiger.png", 
-                            "bird":r"./img/bird.png", 
-                            "dog":r"./img/dog.png", 
-                            "boar":r"./img/boar.png"}
-
+        sign_options = {
+                        "bird": r"./img/bird.png",
+                        "boar": r"./img/boar.png",
+                        "dog": r"./img/dog.png",
+                        "dragon": r"./img/dragon.png",
+                        "hare": r"./img/hare.png",
+                        "monkey": r"./img/monkey.png",
+                        "ox": r"./img/ox.png",
+                        "ram": r"./img/ram.png",
+                        "rat": r"./img/rat.png",
+                        "snake": r"./img/snake.png",
+                        "tiger": r"./img/tiger.png"
+                        }
         self.main_frame = self.create_main_frame()
         self.frame1 = self.create_frame(row=1, column=0, rowspan=4, columnspan=1)
         self.frame2 = self.create_frame(row=5, column=0, rowspan=2, columnspan=1)
         self.frame3 = self.create_frame(row=1, column=1, rowspan=5, columnspan=1)
         self.frame4 = self.create_frame(row=6, column=1, rowspan=1, columnspan=1)
         self.scroll_frame = self.create_scroll_frame(frame=self.frame3)
+        self.video_cap = cv2.VideoCapture(0)
+        self.model = YOLO("last (1).pt")
         self.current_data = []
 
         self.canvas = ctk.CTkCanvas(self.frame1,bg="black",borderwidth=0,highlightthickness=2, highlightbackground="#2B719E")
@@ -138,6 +150,7 @@ class App:
 
         data = []
         self.load_data()
+        self.update_webcam()
 
     def create_main_frame(self):
         frame = ctk.CTkFrame(self.window,border_width=0)
@@ -197,12 +210,46 @@ class App:
     def render_current_data(self):
         for child in self.frame2.winfo_children():
             child.destroy()
-    
-    def webcam(self):
+
+    def clear_current_data(self):
         pass
     
-    def sign_detect(self):
-        pass
+    def update_webcam(self):
+        _, img = self.video_cap.read()
+        cln = []
+        if _:
+            self.frame1.update_idletasks() 
+            self.current_img = img
+
+            pil_img = Image.fromarray(cv2.cvtColor(self.current_img, cv2.COLOR_BGR2RGB))
+            canvas_width = self.frame1.winfo_width()
+            canvas_height = self.frame1.winfo_height()
+            img_width, img_height = pil_img.size
+ 
+            if img_width > canvas_width or img_height > canvas_height:
+                scale = max(canvas_width / img_width, canvas_height / img_height)
+                img_width = int(img_width * scale) 
+                img_height = int(img_height * scale) 
+                 
+            x = (canvas_width - img_width) / 2
+            y = (canvas_height - img_height) / 2
+            pil_img = pil_img.resize((img_width,img_height))
+            results = self.model.predict(pil_img)
+            box = results[0].boxes.cpu().numpy()
+            cln = box.cls
+            img = Image.fromarray(cv2.cvtColor(results[0].plot(), cv2.COLOR_BGR2RGB))
+            self.webcam = ImageTk.PhotoImage(image=img)
+            self.canvas.delete("all")
+            self.canvas.create_image(x,y, image=self.webcam, anchor="nw")
+
+        self.sign_detect(cln)
+        self.window.after(2, self.update_webcam)
+    
+    def sign_detect(self,cln):
+        if len(cln) != 0:
+            class_list = list(sign_options.keys())
+            value = class_list[int(cln[0])-1]
+
 
     def save_data(self):
         with open("data.json", "w") as f:
