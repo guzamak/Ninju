@@ -128,6 +128,7 @@ class App:
                         "dog": r"./img/dog.png",
                         "dragon": r"./img/dragon.png",
                         "hare": r"./img/hare.png",
+                        "horse": r"./img/horse.png",
                         "monkey": r"./img/monkey.png",
                         "ox": r"./img/ox.png",
                         "ram": r"./img/ram.png",
@@ -232,6 +233,28 @@ class App:
         for i, item in enumerate(data):
             if item["sign"] == self.current_data:
                 subprocess.call(item["path"])
+        self.clear_current_data()
+
+    def add_current_data(self,class_index):
+        time_threshold = 3
+        if len(class_index) != 0 and len(self.current_data) < 3:
+            class_list = list(sign_options.keys())
+            value = class_list[int(class_index[0])]
+            # print(class_list,int(class_index[0])-1)
+            if self.sign_before != "":
+                if self.sign_before == value:
+                    self.sign_count += 1
+                    if self.sign_count == time_threshold:
+                        self.current_data.append(value)
+                        self.render_current_data()
+                else:
+                    self.sign_count = 0
+                    self.sign_before = value
+            else:
+                self.sign_count = 1
+                self.sign_before = value
+        if len(self.current_data) == 3:
+            self.run_path()
     
     def update_webcam(self):
         _, img = self.video_cap.read()
@@ -263,26 +286,6 @@ class App:
 
         self.add_current_data(class_index)
         self.window.after(1, self.update_webcam)
-    
-    def add_current_data(self,class_index):
-        time_threshold = 3
-        if len(class_index) != 0 and len(self.current_data) < 3:
-            class_list = list(sign_options.keys())
-            value = class_list[int(class_index[0])-1]
-            if self.sign_before != "":
-                if self.sign_before == value:
-                    self.sign_count += 1
-                    if self.sign_count == time_threshold:
-                        self.current_data.append(value)
-                        self.render_current_data()
-                else:
-                    self.sign_count = 0
-                    self.sign_before = value
-            else:
-                self.sign_count = 1
-                self.sign_before = value
-        else:
-            pass
         
 
     def save_data(self):
