@@ -7,7 +7,10 @@ import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
 from ultralytics import YOLO
 import subprocess
+import os
+import torch
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 DEFAULT_FONT_STYLE = ("Arial",50)
 LABEL_FONT_STYLE = ("Arial",14)
@@ -36,9 +39,7 @@ class Extra(ctk.CTkToplevel):
         # Need to restart when opened
         for key, value in sign_options.items():
             image = Image.open(value)
-            new_width = image.width // 50
-            new_height = image.height // 50
-            image = image.resize((new_width, new_height))
+            image = image.resize((100, 100))
             self.image[key] = image
 
         self.create_path()
@@ -95,20 +96,20 @@ class Extra(ctk.CTkToplevel):
         sign = self.sign
         path = self.path_entry.get()
         if path == "" or sign[0] == sign[1] or sign[1] == sign[2]:
-            show_error("path != no ")
+            show_error("Path cannot be empty. Signs must be distinct.")
             return
 
         save_data = {
             "sign": self.sign.copy(),
             "path": path
         }
-        if len(data) < 5:
-            data.append(save_data)
+        if len(self.app.data) < 5:
+            self.app.data.append(save_data)
             self.app.save_data()
-            self.app.render_data(data)
+            self.app.render_data()
             self.destroy()
         else:
-            show_error("max 5")
+            show_error("Maximum 5 elements allowed in data.")
 
 class App:
     def __init__(self):
@@ -117,7 +118,6 @@ class App:
         self.window.resizable(0, 0)
         self.window.title("app")
         global sign_options 
-        global data
         sign_options = {
                         "bird": r"./img/bird.png",
                         "boar": r"./img/boar.png",
@@ -149,7 +149,7 @@ class App:
         self.create_plus_button()
         self.create_clear_current_data()
 
-        data = []
+        self.data = []
         self.load_data()
         self.update_webcam()
 
@@ -185,12 +185,11 @@ class App:
     def use_extra_window(self):
         extra_window = Extra(self)
 
-    def render_data(self,d):
-        data = d
+    def render_data(self):
         for child in self.scroll_frame.winfo_children():
             child.destroy()
-        if len(d) != 0:
-            for index, item in enumerate(d):
+        if len(self.data) != 0:
+            for index, item in enumerate(self.data):
                 frame = ctk.CTkFrame(self.scroll_frame, corner_radius=0, border_width=0)
                 frame.pack()
 
@@ -211,12 +210,12 @@ class App:
                 label = ctk.CTkLabel(frame, text=f"Path: {item['path'][:20]}...", font=LABEL_FONT_STYLE)
                 label.grid(row=1, column=0, columnspan=len(item['sign']), padx=10, pady=(0, 10), sticky="ew")
 
-                button = ctk.CTkButton(frame, text="Delete", border_width=0, command=lambda d=d, index=index: self.del_data(index, d))
+                button = ctk.CTkButton(frame, text="Delete", border_width=0, command=lambda index=index: self.del_data(index))
                 button.grid(row=2, column=0, columnspan=len(item['sign']), padx=10, pady=(0, 10), sticky="ew")
 
-    def del_data(self,i,d):
-        d.pop(i)
-        self.render_data(d)
+    def del_data(self,i):
+        self.data.pop(i)
+        self.render_data()
         self.save_data()
 
     def render_current_data(self):
@@ -242,13 +241,13 @@ class App:
         self.render_current_data()
 
     def run_path(self):
-        for i, item in enumerate(data):
+        for i, item in enumerate(self.data):
             if item["sign"] == self.current_data:
-                subprocess.call(item["path"])
+               os.startfile(r"{}".format(item["path"]))
         self.clear_current_data()
 
     def add_current_data(self,class_index):
-        time_threshold = 3
+        time_threshold = 25
         if len(class_index) != 0 and len(self.current_data) < 3:
             class_list = list(sign_options.keys())
             value = class_list[int(class_index[0])]
@@ -287,7 +286,7 @@ class App:
             x = (canvas_width - img_width) / 2
             y = (canvas_height - img_height) / 2
             pil_img = pil_img.resize((img_width,img_height))
-            results = self.model.predict(pil_img)
+            results = self.model.predict(pil_img,device=device)
             box = results[0].boxes.cpu().numpy()
             class_index = box.cls
             img = Image.fromarray(cv2.cvtColor(results[0].plot(), cv2.COLOR_BGR2RGB))
@@ -296,17 +295,17 @@ class App:
             self.canvas.create_image(x,y, image=self.webcam, anchor="nw")
 
         self.add_current_data(class_index)
-        self.window.after(1, self.update_webcam)
+        self.window.after(15, self.update_webcam)
 
     def save_data(self):
         with open("data.json", "w") as f:
-            json.dump(data, f)
+            json.dump(self.data, f)
 
     def load_data(self):
         try:
             with open("data.json", "r") as f:
-                data = json.load(f)
-                self.render_data(data)
+                self.data = json.load(f)
+                self.render_data()
         except FileNotFoundError:
             pass
 
