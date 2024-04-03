@@ -141,7 +141,7 @@ class App:
         self.video_cap = cv2.VideoCapture(0)
         self.sign_count = 0
         self.sign_before = ""
-        self.model = YOLO("last (1).pt")
+        self.model = YOLO("model.pt")
         self.current_data = []
 
         self.canvas = ctk.CTkCanvas(self.frame1,bg="black",borderwidth=0,highlightthickness=2, highlightbackground="#2B719E")
